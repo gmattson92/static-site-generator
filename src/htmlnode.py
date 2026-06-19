@@ -30,3 +30,22 @@ class HTMLNode:
         for key, val in self.props.items():
             html_str += f' {key}="{val}"'
         return html_str
+
+
+class LeafNode(HTMLNode):
+    def __init__(self, tag, value, props=None):
+        super().__init__(tag=tag, value=value, children=None, props=props)
+
+    def __repr__(self):
+        s = f'(tag={self.tag}, value={self.value}, props={self.props}'
+        return s
+
+    def to_html(self):
+        if not self.value:
+            raise ValueError('LeafNode must have non-empty value; '
+                             f'this={self}')
+        if not self.tag:
+            return self.value
+        opening = f'<{self.tag}{self.props_to_html()}>'
+        closing = f'</{self.tag}>'
+        return opening + self.value + closing
