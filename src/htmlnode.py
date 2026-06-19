@@ -1,0 +1,32 @@
+class HTMLNode:
+    def __init__(self, tag=None, value=None, children=None, props=None):
+        """
+        Arguments:
+            tag - string representing the HTML tag name, e.g. "p" or "a"
+                    (if None, value will render as plain text)
+            value - string that goes in between the opening and closing
+                    (if None, node is assumed to have children)
+            children - list of HTMLNode children of this node
+                    (if None, node is assumed to have a value)
+            props - dict holding attributes of the tag
+        """
+        self.tag = tag
+        self.value = value
+        self.children = children
+        self.props = props
+
+    def __repr__(self):
+        s = f'(tag={self.tag}, value={self.value}, children={self.children}, '
+        s += f'props={self.props}'
+        return s
+
+    def to_html(self):
+        raise NotImplementedError
+
+    def props_to_html(self):
+        if not self.props:
+            return ''
+        html_str = ''
+        for key, val in self.props.items():
+            html_str += f' {key}="{val}"'
+        return html_str
