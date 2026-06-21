@@ -41,11 +41,42 @@ class LeafNode(HTMLNode):
         return s
 
     def to_html(self):
+        if self.tag == 'img':
+            return self._img_to_html()
         if not self.value:
-            raise ValueError('LeafNode must have non-empty value; '
+            raise ValueError('Non-image LeafNode must have non-empty value; '
                              f'this={self}')
         if not self.tag:
             return self.value
         opening = f'<{self.tag}{self.props_to_html()}>'
         closing = f'</{self.tag}>'
         return opening + self.value + closing
+
+    def _img_to_html(self):
+        if self.tag != 'img':
+            raise ValueError('_img_to_html called on non-image node; '
+                             f'this={self}')
+        return f'<{self.tag}{self.props_to_html()}>'
+
+
+class ParentNode(HTMLNode):
+    def __init__(self, tag, children, props=None):
+        super().__init__(tag=tag, value=None, children=children, props=props)
+
+    def __repr__(self):
+        s = f'(tag={self.tag}, children={self.children}, props={self.props}'
+        return s
+
+    def to_html(self):
+        if not self.tag:
+            raise ValueError('ParentNode must have a tag; '
+                             f'this={self}')
+        if not self.children:
+            raise ValueError('ParentNode must have children; '
+                             f'this={self}')
+        opening = f'<{self.tag}{self.props_to_html()}>'
+        closing = f'</{self.tag}>'
+        contents = ''
+        for child in self.children:
+            contents += child.to_html()
+        return opening + contents + closing
