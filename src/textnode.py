@@ -1,3 +1,4 @@
+import re
 from enum import Enum
 from htmlnode import LeafNode
 
@@ -94,7 +95,30 @@ def split_node_delimiter(node: TextNode,
 
 def split_nodes_delimiter(old_nodes: list[TextNode],
                           delimiter: str) -> list[TextNode]:
+    """
+    Splits TextNode objects with inline Markdown formatting into component
+    TextNode objects. Cannot handle nested inline elements,
+    e.g. "_some **bold** italic text_"
+    """
     new_nodes = []
     for node in old_nodes:
         new_nodes.extend(split_node_delimiter(node, delimiter))
     return new_nodes
+
+
+def extract_markdown_images(text: str) -> list[tuple]:
+    """
+    Parses text for Markdown image tags and returns a list of
+    (alt_text, URL) tuples.
+    """
+    search_str = r'!\[([^\]]*)\]\(([^\)]+)\)'
+    return re.findall(search_str, text)
+
+
+def extract_markdown_links(text: str) -> list[tuple]:
+    """
+    Parses text for Markdown hyperlinks and returns a list of
+    (link text, URL) tuples.
+    """
+    search_str = r'(?<!!)\[([^\]]+)\]\(([^\)]+)\)'
+    return re.findall(search_str, text)

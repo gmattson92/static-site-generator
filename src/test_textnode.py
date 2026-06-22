@@ -108,12 +108,12 @@ class TestSplitNodes(unittest.TestCase):
     def test_plain(self):
         node = tn.TextNode('This is some plain text', tn.TextType.PLAIN)
         new_nodes = tn.split_nodes_delimiter([node], '**')
-        self.assertEqual(new_nodes, [node])
+        self.assertListEqual(new_nodes, [node])
 
     def test_non_plain(self):
         node = tn.TextNode('This is some plain text', tn.TextType.LINK)
         new_nodes = tn.split_nodes_delimiter([node], '**')
-        self.assertEqual(new_nodes, [node])
+        self.assertListEqual(new_nodes, [node])
 
     def test_bold(self):
         node = tn.TextNode('This is some **bold** text', tn.TextType.PLAIN)
@@ -123,7 +123,7 @@ class TestSplitNodes(unittest.TestCase):
             tn.TextNode('bold', tn.TextType.BOLD),
             tn.TextNode(' text', tn.TextType.PLAIN)
         ]
-        self.assertEqual(new_nodes, correct)
+        self.assertListEqual(new_nodes, correct)
 
     def test_italic(self):
         node = tn.TextNode('This is some _italic_ text', tn.TextType.PLAIN)
@@ -133,7 +133,7 @@ class TestSplitNodes(unittest.TestCase):
             tn.TextNode('italic', tn.TextType.ITALIC),
             tn.TextNode(' text', tn.TextType.PLAIN)
         ]
-        self.assertEqual(new_nodes, correct)
+        self.assertListEqual(new_nodes, correct)
 
     def test_code(self):
         node = tn.TextNode('This is some `code`', tn.TextType.PLAIN)
@@ -142,7 +142,7 @@ class TestSplitNodes(unittest.TestCase):
             tn.TextNode('This is some ', tn.TextType.PLAIN),
             tn.TextNode('code', tn.TextType.CODE)
         ]
-        self.assertEqual(new_nodes, correct)
+        self.assertListEqual(new_nodes, correct)
 
     def test_multi(self):
         old_nodes = [
@@ -161,7 +161,7 @@ class TestSplitNodes(unittest.TestCase):
             tn.TextNode(', ', tn.TextType.PLAIN),
             tn.TextNode('then a link', tn.TextType.PLAIN, 'boot.dev')
         ]
-        self.assertEqual(new_nodes, correct)
+        self.assertListEqual(new_nodes, correct)
 
     def test_concat(self):
         original_text = ('This is some **bold text**, followed by some `code`'
@@ -176,7 +176,56 @@ class TestSplitNodes(unittest.TestCase):
             tn.TextNode('code', tn.TextType.CODE, 'boot.dev'),
             tn.TextNode(', then a link', tn.TextType.PLAIN, 'boot.dev'),
         ]
-        self.assertEqual(new_nodes, correct)
+        self.assertListEqual(new_nodes, correct)
+
+
+class TestImageLinkExtraction(unittest.TestCase):
+    def test_image_1(self):
+        search_text = ('This is an example with a '
+                       '![rick roll](https://i.imgur.com/aKaOqIh.gif) and '
+                       '![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)')
+        image_info = tn.extract_markdown_images(search_text)
+        correct = [('rick roll', 'https://i.imgur.com/aKaOqIh.gif'),
+                   ('obi wan', 'https://i.imgur.com/fJRm4Vk.jpeg')]
+        self.assertListEqual(image_info, correct)
+
+    def test_image_2(self):
+        # Require that images have a source -- but alt text is not necessary
+        search_text = ('This is a bad example with a '
+                       '![](https://i.imgur.com/aKaOqIh.gif) and '
+                       '![obi wan]()')
+        image_info = tn.extract_markdown_images(search_text)
+        correct = [('', 'https://i.imgur.com/aKaOqIh.gif')]
+        self.assertListEqual(image_info, correct)
+
+    def test_link_1(self):
+        search_text = ('This is text with links to '
+                       '[rick roll](https://i.imgur.com/aKaOqIh.gif) and '
+                       '[obi wan](https://i.imgur.com/fJRm4Vk.jpeg)')
+        link_info = tn.extract_markdown_links(search_text)
+        correct = [('rick roll', 'https://i.imgur.com/aKaOqIh.gif'),
+                   ('obi wan', 'https://i.imgur.com/fJRm4Vk.jpeg')]
+        self.assertListEqual(link_info, correct)
+
+    def test_link_2(self):
+        # Require that links have both display text and a URL
+        search_text = ('This is a bad example with links to '
+                       '[](https://i.imgur.com/aKaOqIh.gif) and '
+                       '[obi wan]()')
+        link_info = tn.extract_markdown_links(search_text)
+        correct = []
+        self.assertListEqual(link_info, correct)
+
+    def test_mixed(self):
+        search_text = ('This is an example with an image '
+                       '![image](https://i.imgur.com/aKaOqIh.gif) and '
+                       'a [link](https://i.imgur.com/fJRm4Vk.jpeg)')
+        image_info = tn.extract_markdown_images(search_text)
+        image_correct = [('image', 'https://i.imgur.com/aKaOqIh.gif')]
+        self.assertListEqual(image_info, image_correct)
+        link_info = tn.extract_markdown_links(search_text)
+        link_correct = [('link', 'https://i.imgur.com/fJRm4Vk.jpeg')]
+        self.assertListEqual(link_info, link_correct)
 
 
 if __name__ == '__main__':
