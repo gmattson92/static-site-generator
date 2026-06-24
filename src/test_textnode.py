@@ -104,7 +104,7 @@ class TestTextToHTML(unittest.TestCase):
         self.assertEqual(html_node.to_html(), html_str)
 
 
-class TestSplitNodes(unittest.TestCase):
+class TestSplitNodesDelimiter(unittest.TestCase):
     def test_plain(self):
         node = tn.TextNode('This is some plain text', tn.TextType.PLAIN)
         new_nodes = tn.split_nodes_delimiter([node], '**')
@@ -226,6 +226,154 @@ class TestImageLinkExtraction(unittest.TestCase):
         link_info = tn.extract_markdown_links(search_text)
         link_correct = [('link', 'https://i.imgur.com/fJRm4Vk.jpeg')]
         self.assertListEqual(link_info, link_correct)
+
+
+class TestSplitNodesImage(unittest.TestCase):
+    def test_plain(self):
+        text = 'This is some plain text'
+        node = tn.TextNode(text, tn.TextType.PLAIN)
+        new_nodes = tn.split_nodes_image([node])
+        self.assertListEqual(new_nodes, [node])
+
+    def test_image_at_beginning(self):
+        text = '![alt text](some.url) this text begins with an image'
+        node = tn.TextNode(text, tn.TextType.PLAIN)
+        new_nodes = tn.split_nodes_image([node])
+        correct = [
+            tn.TextNode('alt text', tn.TextType.IMAGE, 'some.url'),
+            tn.TextNode(' this text begins with an image', tn.TextType.PLAIN)
+        ]
+        self.assertListEqual(new_nodes, correct)
+
+    def test_image_at_end(self):
+        text = 'this text ends with an image ![alt text](some.url)'
+        node = tn.TextNode(text, tn.TextType.PLAIN)
+        new_nodes = tn.split_nodes_image([node])
+        correct = [
+            tn.TextNode('this text ends with an image ', tn.TextType.PLAIN),
+            tn.TextNode('alt text', tn.TextType.IMAGE, 'some.url')
+        ]
+        self.assertListEqual(new_nodes, correct)
+
+    def test_image_at_beginning_and_end(self):
+        text = ('![alt text](some.url) this text begins with an image'
+                ' and ends with another ![other alt text](other.url)')
+        node = tn.TextNode(text, tn.TextType.PLAIN)
+        new_nodes = tn.split_nodes_image([node])
+        correct = [
+            tn.TextNode('alt text', tn.TextType.IMAGE, 'some.url'),
+            tn.TextNode(' this text begins with an image'
+                        ' and ends with another ', tn.TextType.PLAIN),
+            tn.TextNode('other alt text', tn.TextType.IMAGE, 'other.url')
+        ]
+        self.assertListEqual(new_nodes, correct)
+
+    def test_image_in_middle(self):
+        text = ('this text has an image ![alt text](some.url) in the middle')
+        node = tn.TextNode(text, tn.TextType.PLAIN)
+        new_nodes = tn.split_nodes_image([node])
+        correct = [
+            tn.TextNode('this text has an image ', tn.TextType.PLAIN),
+            tn.TextNode('alt text', tn.TextType.IMAGE, 'some.url'),
+            tn.TextNode(' in the middle', tn.TextType.PLAIN),
+        ]
+        self.assertListEqual(new_nodes, correct)
+
+    def test_image_multi(self):
+        text1 = ('this text has an image ![alt text](some.url) in the middle')
+        node1 = tn.TextNode(text1, tn.TextType.PLAIN)
+        text2 = ('this text does not have an image')
+        node2 = tn.TextNode(text2, tn.TextType.PLAIN)
+        text3 = ('this text has two images![second text](second.url)'
+                 '![third text](third.url)in the middle')
+        node3 = tn.TextNode(text3, tn.TextType.PLAIN)
+        old_nodes = [node1, node2, node3]
+        new_nodes = tn.split_nodes_image(old_nodes)
+        correct = [
+            tn.TextNode('this text has an image ', tn.TextType.PLAIN),
+            tn.TextNode('alt text', tn.TextType.IMAGE, 'some.url'),
+            tn.TextNode(' in the middle', tn.TextType.PLAIN),
+            tn.TextNode('this text does not have an image', tn.TextType.PLAIN),
+            tn.TextNode('this text has two images', tn.TextType.PLAIN),
+            tn.TextNode('second text', tn.TextType.IMAGE, 'second.url'),
+            tn.TextNode('third text', tn.TextType.IMAGE, 'third.url'),
+            tn.TextNode('in the middle', tn.TextType.PLAIN),
+        ]
+        self.assertListEqual(new_nodes, correct)
+
+
+class TestSplitNodesLink(unittest.TestCase):
+    def test_plain(self):
+        text = 'This is some plain text'
+        node = tn.TextNode(text, tn.TextType.PLAIN)
+        new_nodes = tn.split_nodes_link([node])
+        self.assertListEqual(new_nodes, [node])
+
+    def test_link_at_beginning(self):
+        text = '[alt text](some.url) this text begins with a link'
+        node = tn.TextNode(text, tn.TextType.PLAIN)
+        new_nodes = tn.split_nodes_link([node])
+        correct = [
+            tn.TextNode('alt text', tn.TextType.LINK, 'some.url'),
+            tn.TextNode(' this text begins with a link', tn.TextType.PLAIN)
+        ]
+        self.assertListEqual(new_nodes, correct)
+
+    def test_link_at_end(self):
+        text = 'this text ends with a link [alt text](some.url)'
+        node = tn.TextNode(text, tn.TextType.PLAIN)
+        new_nodes = tn.split_nodes_link([node])
+        correct = [
+            tn.TextNode('this text ends with a link ', tn.TextType.PLAIN),
+            tn.TextNode('alt text', tn.TextType.LINK, 'some.url')
+        ]
+        self.assertListEqual(new_nodes, correct)
+
+    def test_link_at_beginning_and_end(self):
+        text = ('[alt text](some.url) this text begins with a link'
+                ' and ends with another [other alt text](other.url)')
+        node = tn.TextNode(text, tn.TextType.PLAIN)
+        new_nodes = tn.split_nodes_link([node])
+        correct = [
+            tn.TextNode('alt text', tn.TextType.LINK, 'some.url'),
+            tn.TextNode(' this text begins with a link'
+                        ' and ends with another ', tn.TextType.PLAIN),
+            tn.TextNode('other alt text', tn.TextType.LINK, 'other.url')
+        ]
+        self.assertListEqual(new_nodes, correct)
+
+    def test_link_in_middle(self):
+        text = ('this text has a link [alt text](some.url) in the middle')
+        node = tn.TextNode(text, tn.TextType.PLAIN)
+        new_nodes = tn.split_nodes_link([node])
+        correct = [
+            tn.TextNode('this text has a link ', tn.TextType.PLAIN),
+            tn.TextNode('alt text', tn.TextType.LINK, 'some.url'),
+            tn.TextNode(' in the middle', tn.TextType.PLAIN),
+        ]
+        self.assertListEqual(new_nodes, correct)
+
+    def test_link_multi(self):
+        text1 = ('this text has a link [alt text](some.url) in the middle')
+        node1 = tn.TextNode(text1, tn.TextType.PLAIN)
+        text2 = ('this text does not have a link')
+        node2 = tn.TextNode(text2, tn.TextType.PLAIN)
+        text3 = ('this text has two links[second text](second.url)'
+                 '[third text](third.url)in the middle')
+        node3 = tn.TextNode(text3, tn.TextType.PLAIN)
+        old_nodes = [node1, node2, node3]
+        new_nodes = tn.split_nodes_link(old_nodes)
+        correct = [
+            tn.TextNode('this text has a link ', tn.TextType.PLAIN),
+            tn.TextNode('alt text', tn.TextType.LINK, 'some.url'),
+            tn.TextNode(' in the middle', tn.TextType.PLAIN),
+            tn.TextNode('this text does not have a link', tn.TextType.PLAIN),
+            tn.TextNode('this text has two links', tn.TextType.PLAIN),
+            tn.TextNode('second text', tn.TextType.LINK, 'second.url'),
+            tn.TextNode('third text', tn.TextType.LINK, 'third.url'),
+            tn.TextNode('in the middle', tn.TextType.PLAIN),
+        ]
+        self.assertListEqual(new_nodes, correct)
 
 
 if __name__ == '__main__':
