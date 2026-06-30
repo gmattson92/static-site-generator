@@ -280,7 +280,7 @@ This third paragraph has an image ![alt text](some.url) then more text.
     def test_extra_whitespace(self):
         text = '''
 
-This is some plain text.
+    This is some plain text with preceding whitespace.
 
 
 This is a new paragraph.
@@ -293,11 +293,153 @@ This third paragraph should be the third block.
         '''
         blocks = mp.markdown_to_blocks(text)
         correct = [
-            'This is some plain text.',
+            'This is some plain text with preceding whitespace.',
             ('This is a new paragraph.\n'
              '    This is the same paragraph on a new line.'),
             'This third paragraph should be the third block.']
         self.assertListEqual(blocks, correct)
+
+
+class TestMarkdownToBlockType(unittest.TestCase):
+    def test_empty_or_short(self):
+        block = ''
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+        block = ' '
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+        block = 'A'
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+
+    def test_plain(self):
+        block = 'This is some plain text.'
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+        block = 'This is some plain text.\nIt spans two lines.'
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+        block = 'This text _has_ some **inline** formatting.'
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+
+    def test_heading(self):
+        block = '# This is a heading'
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.HEADING)
+        block = '###### This is a heading'
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.HEADING)
+        block = '#  This is not a heading'
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+        block = '####### This is not a heading'
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+        block = '#This is not a heading'
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+        block = '# '
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+
+    def test_code(self):
+        block = (
+            '''```
+this is a code block;
+it has two lines of code;
+```''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.CODE)
+        block = (
+            '''```
+this is not a code block;
+it is missing the closing backticks''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+        block = (
+            '''```also not a code block;
+it is missing the opening newline
+```''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+
+    def test_quote(self):
+        block = (
+            '''> This is a quote.
+>It takes up two lines.''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.QUOTE)
+        block = (
+            '''> This is not a quote.
+It takes up three lines,
+> but the second line is missing the quote symbol.''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+
+    def test_unordered_list(self):
+        block = (
+            '''- This is a list.
+- It has two items.''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.UNORDERED_LIST)
+        block = (
+            '''- This is a list,
+-  Even though the second item has extra space,
+- And the last item is blank
+- ''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.UNORDERED_LIST)
+        block = (
+            '''- This is not a list.
+-It has three items.
+- But the second item is missing a space.''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+        block = (
+            '''- This is not a list.
+It has three items.
+- But the second item is missing a "-".''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+
+    def test_ordered_list(self):
+        block = (
+            '''1. This is a list.
+2. It has two items.''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.ORDERED_LIST)
+        block = (
+            '''1. This is a list,
+2.  Even though the second item has extra space,
+3. And the last item is blank
+4. ''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.ORDERED_LIST)
+        block = (
+            '''1. This is not a list.
+2.It has three items.
+3. But the second item is missing a space.''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+        block = (
+            '''1. This is not a list.
+It has three items.
+2. But the second item is missing a number.''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+        block = (
+            '''2. This is not a list.
+3. The numbers are in order,.
+4. But do not start at 1.''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+        block = (
+            '''1. This is not a list.
+3. The numbers start with 1,
+4. But are not in order.''')
+        block_type = mp.markdown_block_to_block_type(block)
+        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
 
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
 import re
+from enum import Enum
 from textnode import TextNode, TextType, split_nodes_delimiter
 
 
@@ -117,3 +118,84 @@ def markdown_to_blocks(full_markdown_string: str) -> list[str]:
         else:
             stripped_blocks.append(block.strip())
     return stripped_blocks
+
+
+class BlockType(Enum):
+    PARAGRAPH = 'paragraph'
+    HEADING = 'heading'
+    CODE = 'code'
+    QUOTE = 'quote'
+    UNORDERED_LIST = 'unordered list'
+    ORDERED_LIST = 'ordered list'
+
+
+def is_heading(block: str) -> bool:
+    search_str = r'^#{1,6} \w+'
+    m = re.search(search_str, block)
+    if m:
+        return True
+    else:
+        return False
+
+
+def is_quote(lines: list[str]) -> bool:
+    for line in lines:
+        if len(line) < 1:
+            return False
+        if line[0] != '>':
+            return False
+    return True
+
+
+def is_unordered_list(lines: list[str]) -> bool:
+    for line in lines:
+        if len(line) < 2:
+            return False
+        if line[0:2] != '- ':
+            return False
+    return True
+
+
+def is_ordered_list(lines: list[str]) -> bool:
+    current_number = 1
+    for line in lines:
+        if len(line) < 3:
+            return False
+        num_length = len(str(current_number))
+        try:
+            leading_number = int(line[:num_length])
+        except ValueError:
+            return False
+        if leading_number != current_number:
+            return False
+        if line[num_length:num_length+2] != '. ':
+            return False
+        current_number += 1
+    return True
+
+
+def markdown_block_to_block_type(block: str) -> BlockType:
+    """
+    Reads a string corresponding to a single Markdown block and returns the
+    corresponding BlockType. Assumes leading and trailing whitespace have been
+    stripped.
+    """
+    lines = block.split('\n')
+    # Headings
+    if is_heading(block):
+        return BlockType.HEADING
+    # Multiline code
+    if len(block) > 3:
+        if (block[0:4] == '```\n' and block[-4:] == '\n```'):
+            return BlockType.CODE
+    # Multiline quotes
+    if is_quote(lines):
+        return BlockType.QUOTE
+    # Unordered lists
+    if is_unordered_list(lines):
+        return BlockType.UNORDERED_LIST
+    # Ordered lists
+    if is_ordered_list(lines):
+        return BlockType.ORDERED_LIST
+    # If none of the above, it's a paragraph
+    return BlockType.PARAGRAPH
