@@ -1,6 +1,8 @@
 import re
 from enum import Enum
-from textnode import TextNode, TextType, split_nodes_delimiter
+from textnode import (TextNode, TextType, split_nodes_delimiter,
+                      textnode_to_htmlnode)
+from htmlnode import ParentNode
 
 
 def extract_markdown_images(text: str) -> list[tuple]:
@@ -168,7 +170,7 @@ def is_ordered_list(lines: list[str]) -> bool:
             return False
         if leading_number != current_number:
             return False
-        if line[num_length:num_length+2] != '. ':
+        if line[num_length:num_length+1] != '.':
             return False
         current_number += 1
     return True
@@ -199,3 +201,139 @@ def markdown_block_to_block_type(block: str) -> BlockType:
         return BlockType.ORDERED_LIST
     # If none of the above, it's a paragraph
     return BlockType.PARAGRAPH
+
+
+def get_heading_number(heading_block: str) -> int:
+    """
+    Parses a Markdown heading string and returns the corresponding HTML
+    heading number.
+    """
+    search_str = r'^(#{1,6})'
+    m = re.search(search_str, heading_block)
+    if m:
+        return len(m.group(0))
+    else:
+        raise ValueError('get_heading_number called on non-heading block =\n'
+                         f'{heading_block}')
+
+
+def get_parent_html_tag(block: str) -> str:
+    """
+    Parses a Markdown block and returns the corresponding HTML tag.
+    """
+    block_type = markdown_block_to_block_type(block)
+    if block_type == BlockType.PARAGRAPH:
+        tag = 'p'
+    elif block_type == BlockType.HEADING:
+        num = get_heading_number(block)
+        tag = f'h{num}'
+    elif block_type == BlockType.CODE:
+        tag = 'pre'
+    elif block_type == BlockType.QUOTE:
+        tag = 'blockquote'
+    elif block_type == BlockType.UNORDERED_LIST:
+        tag = 'ul'
+    elif block_type == BlockType.ORDERED_LIST:
+        tag = 'ol'
+    else:
+        raise ValueError('Invalid block type {block_type}')
+    return tag
+
+
+def get_paragraph_node(block):
+    tag = get_parent_html_tag(block)
+    textnodes = inline_markdown_to_textnodes(block)
+    children = [textnode_to_htmlnode(node) for node in textnodes]
+    return ParentNode(tag, children)
+
+
+def get_heading_node(heading_block):
+    tag = get_parent_html_tag(heading_block)
+    text = heading_block.strip('# ')
+    textnodes = inline_markdown_to_textnodes(text)
+    children = [textnode_to_htmlnode(node) for node in textnodes]
+    return ParentNode(tag, children)
+
+
+def get_code_node(code_block):
+    tag = get_parent_html_tag(code_block)
+    text = code_block.strip('`')
+    textnode = TextNode(text, TextType.CODE)
+    htmlnode = textnode_to_htmlnode(textnode)
+    children = [htmlnode]
+    return ParentNode(tag, children)
+
+
+def get_quote_node(quote_block):
+    tag = get_parent_html_tag(quote_block)
+    children = []
+    lines = quote_block.split('\n')
+    for line in lines:
+        text = line.strip('> ')
+        text += '\n'
+        textnodes = inline_markdown_to_textnodes(text)
+        htmlnodes = [textnode_to_htmlnode(node) for node in textnodes]
+        children.extend(htmlnodes)
+    return ParentNode(tag, children)
+
+
+def get_unordered_list_node(ul_block):
+    tag = get_parent_html_tag(ul_block)
+    list_children = []
+    lines = ul_block.split('\n')
+    for line in lines:
+        htmlnodes = []
+        text = line.strip('- ')
+        textnodes = inline_markdown_to_textnodes(text)
+        for node in textnodes:
+            # node.text = '<li>' + node.text + '</li>'
+            htmlnodes.append(textnode_to_htmlnode(node))
+        linenode = ParentNode('li', htmlnodes)
+        list_children.append(linenode)
+    return ParentNode(tag, list_children)
+
+
+def get_ordered_list_node(ol_block):
+    tag = get_parent_html_tag(ol_block)
+    list_children = []
+    lines = ol_block.split('\n')
+    for line in lines:
+        htmlnodes = []
+        starting_index = line.find(' ') + 1
+        text = line[starting_index:]
+        textnodes = inline_markdown_to_textnodes(text)
+        for node in textnodes:
+            # node.text = '<li>' + node.text + '</li>'
+            htmlnodes.append(textnode_to_htmlnode(node))
+        linenode = ParentNode('li', htmlnodes)
+        list_children.append(linenode)
+    return ParentNode(tag, list_children)
+
+
+def block_to_parent_node(block: str) -> ParentNode:
+    block_type = markdown_block_to_block_type(block)
+    d_block_type_to_fn = {
+        BlockType.PARAGRAPH: get_paragraph_node,
+        BlockType.HEADING: get_heading_node,
+        BlockType.CODE: get_code_node,
+        BlockType.QUOTE: get_quote_node,
+        BlockType.UNORDERED_LIST: get_unordered_list_node,
+        BlockType.ORDERED_LIST: get_ordered_list_node
+    }
+    if block_type not in d_block_type_to_fn:
+        raise ValueError(f'Invalid block type {block_type}')
+    return d_block_type_to_fn[block_type](block)
+
+
+def markdown_to_htmlnode(markdown: str) -> ParentNode:
+    """
+    Parses a string representing a full Markdown file and returns an HTMLNode
+    whose text representation corresponds to the full HTML code required to
+    display the Markdown file in a browser.
+    """
+    blocks = markdown_to_blocks(markdown)
+    parents = []
+    for block in blocks:
+        parent_node = block_to_parent_node(block)
+        parents.append(parent_node)
+    return ParentNode('div', parents)

@@ -100,7 +100,7 @@ class TestTextToHTML(unittest.TestCase):
         self.assertEqual(html_node.props,
                          {'src': 'boot.dev/dummy.jpg',
                           'alt': 'This is an image'})
-        html_str = '<img src="boot.dev/dummy.jpg" alt="This is an image">'
+        html_str = '<img src="boot.dev/dummy.jpg" alt="This is an image"/>'
         self.assertEqual(html_node.to_html(), html_str)
 
 

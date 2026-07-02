@@ -417,11 +417,11 @@ It has three items.
         block_type = mp.markdown_block_to_block_type(block)
         self.assertEqual(block_type, mp.BlockType.ORDERED_LIST)
         block = (
-            '''1. This is not a list.
+            '''1. This is a list.
 2.It has three items.
 3. But the second item is missing a space.''')
         block_type = mp.markdown_block_to_block_type(block)
-        self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+        self.assertEqual(block_type, mp.BlockType.ORDERED_LIST)
         block = (
             '''1. This is not a list.
 It has three items.
@@ -440,6 +440,202 @@ It has three items.
 4. But are not in order.''')
         block_type = mp.markdown_block_to_block_type(block)
         self.assertEqual(block_type, mp.BlockType.PARAGRAPH)
+
+
+class TestMarkdownToHTML(unittest.TestCase):
+    def test_paragraphs(self):
+        markdown = '''
+This is **bolded** paragraph
+text in a p
+tag here
+
+This is another paragraph with _italic_ text and `code` here
+
+'''
+        node = mp.markdown_to_htmlnode(markdown)
+        html = node.to_html()
+        correct = ('<div><p>This is <b>bolded</b> paragraph\ntext in a p\ntag '
+                'here</p><p>This is another paragraph with <i>italic</i> text '
+                'and <code>code</code> here</p></div>')
+        self.assertEqual(html, correct)
+
+    def test_heading(self):
+        markdown = '''
+# This is a major heading
+
+### This is a minor heading
+
+####### This is a paragraph
+'''
+        node = mp.markdown_to_htmlnode(markdown)
+        html = node.to_html()
+        correct = ('<div><h1>This is a major heading</h1><h3>This is a minor '
+                   'heading</h3><p>####### This is a paragraph</p></div>')
+        self.assertEqual(html, correct)
+
+    def test_codeblock(self):
+        markdown = '''
+```
+This is text that _should_ remain
+the **same** even with inline stuff
+```
+'''
+        node = mp.markdown_to_htmlnode(markdown)
+        html = node.to_html()
+        correct = ('<div><pre><code>\nThis is text that _should_ remain\nthe '
+                   '**same** even with inline stuff\n</code></pre></div>')
+        self.assertEqual(html, correct)
+
+    def test_quote(self):
+        markdown = '''
+> This is a quote
+>  with some **inline** _formatting_
+>that spans three lines
+'''
+        node = mp.markdown_to_htmlnode(markdown)
+        html = node.to_html()
+        correct = ('<div><blockquote>This is a quote\nwith some <b>inline</b> '
+                   '<i>formatting</i>\nthat spans three lines\n</blockquote>'
+                   '</div>')
+        self.assertEqual(html, correct)
+
+    def test_lists(self):
+        markdown = '''
+- This is an unordered list
+-  With some **inline** _formatting_
+- And three items
+
+1. This is an ordered list
+2. Item 2. has a [link](boot.dev)
+3.  Item 3. has an extra space
+
+3. This is not a list,
+4. Because it does not start with 1.
+'''
+        node = mp.markdown_to_htmlnode(markdown)
+        html = node.to_html()
+        correct = (
+'<div>'
+'<ul>'
+'<li>This is an unordered list</li>'
+'<li>With some <b>inline</b> <i>formatting</i></li>'
+'<li>And three items</li>'
+'</ul>'
+'<ol>'
+'<li>This is an ordered list</li>'
+'<li>Item 2. has a <a href="boot.dev">link</a></li>'
+'<li> Item 3. has an extra space</li>'
+'</ol>'
+'<p>'
+'3. This is not a list,\n4. Because it does not start with 1.'
+'</p>'
+'</div>'
+        )
+        self.assertEqual(html, correct)
+
+    def test_mix(self):
+        markdown = (
+'''
+# Main Title
+
+## Section 1: Paragraphs
+
+This is a paragraph. It has **bold**, _italics_ and some `code`.
+It also has a [link](boot.dev) and an image: \
+![alt text](https://i.imgur.com/fJRm4Vk.jpeg)
+
+## Section 2: Code
+
+This section has some `inline code`, plus a `code block`:
+
+```
+def hello(name):
+    print(f'Hello, {name}!')
+hello('world')
+```
+
+## Section 3: Quotes
+
+Here is a quote:
+
+> Roses are red,
+> violets are blue.
+
+This one isn't a quote though:
+
+> Roses are red,
+> violets are blue;
+Something is missing --
+> I'll give you a clue (>)
+
+## Section 4: Lists
+
+Here is an ordered list:
+
+1. Item one
+2. Item two
+3. Item three
+
+And that's all! ![smiley](https://i.imgur.com/fJRm4Vk.jpeg)
+'''
+        )
+        node = mp.markdown_to_htmlnode(markdown)
+        html = node.to_html()
+        correct = (
+'''\
+<div>\
+<h1>Main Title</h1>\
+<h2>Section 1: Paragraphs</h2>\
+<p>\
+This is a paragraph. It has <b>bold</b>, <i>italics</i> and \
+some <code>code</code>.\n\
+It also has a <a href="boot.dev">link</a> and an image: \
+<img src="https://i.imgur.com/fJRm4Vk.jpeg" alt="alt text"/>\
+</p>\
+<h2>Section 2: Code</h2>\
+<p>\
+This section has some <code>inline code</code>, plus a \
+<code>code block</code>:\
+</p>\
+<pre><code>\n\
+def hello(name):\n\
+    print(f'Hello, {name}!')\n\
+hello('world')
+</code></pre>\
+<h2>Section 3: Quotes</h2>\
+<p>\
+Here is a quote:\
+</p>\
+<blockquote>\
+Roses are red,\nviolets are blue.\n\
+</blockquote>\
+<p>\
+This one isn't a quote though:\
+</p>\
+<p>\
+> Roses are red,\n> violets are blue;\n\
+Something is missing --\n> I'll give you a clue (>)\
+</p>\
+<h2>Section 4: Lists</h2>\
+<p>\
+Here is an ordered list:\
+</p>\
+<ol>\
+<li>Item one</li>\
+<li>Item two</li>\
+<li>Item three</li>\
+</ol>\
+<p>\
+And that's all! <img src="https://i.imgur.com/fJRm4Vk.jpeg" alt="smiley"/>\
+</p>\
+</div>\
+'''
+        )
+        self.assertEqual(html, correct)
+
+
+# print('test_mix(): html =')
+# print(html)
 
 
 if __name__ == '__main__':

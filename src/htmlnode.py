@@ -1,5 +1,9 @@
 class HTMLNode:
-    def __init__(self, tag=None, value=None, children=None, props=None):
+    def __init__(self,
+                 tag=None,
+                 value=None,
+                 children=None,
+                 props=None):
         """
         Arguments:
             tag - string representing the HTML tag name, e.g. "p" or "a"
@@ -37,7 +41,8 @@ class LeafNode(HTMLNode):
         super().__init__(tag=tag, value=value, children=None, props=props)
 
     def __repr__(self):
-        s = f'(tag={self.tag}, value={self.value}, props={self.props}'
+        s = (f'(tag={self.tag}, value={self.value}, '
+             f'props={self.props}')
         return s
 
     def to_html(self):
@@ -56,7 +61,7 @@ class LeafNode(HTMLNode):
         if self.tag != 'img':
             raise ValueError('_img_to_html called on non-image node; '
                              f'this={self}')
-        return f'<{self.tag}{self.props_to_html()}>'
+        return f'<{self.tag}{self.props_to_html()}/>'
 
 
 class ParentNode(HTMLNode):
@@ -64,7 +69,8 @@ class ParentNode(HTMLNode):
         super().__init__(tag=tag, value=None, children=children, props=props)
 
     def __repr__(self):
-        s = f'(tag={self.tag}, children={self.children}, props={self.props}'
+        s = (f'(tag={self.tag}, children={self.children}, '
+             'props={self.props}')
         return s
 
     def to_html(self):
