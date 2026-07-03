@@ -1,5 +1,6 @@
 import os
 import shutil
+import markdown_parsing as mp
 
 
 def clean_destination(target_dir: str, verbose=False) -> None:
@@ -107,3 +108,30 @@ def copy_alt(source_dir, target_dir):
         shutil.rmtree(target_dir)
     if os.path.exists(source_dir) and os.path.isdir(source_dir):
         shutil.copytree(source_dir, target_dir)
+
+
+def generate_page(src_path, template_path, dst_path):
+    print(f'Generating page from {src_path} to {dst_path} '
+          f'using {template_path}')
+    if not os.path.exists(src_path) or not os.path.isfile(src_path):
+        raise ValueError(f'Source file {src_path} does not exist!')
+    if not os.path.exists(template_path) or not os.path.isfile(template_path):
+        raise ValueError(f'Template file {template_path} does not exist!')
+
+    with open(src_path, 'r') as src_file:
+        src_str = src_file.read()
+    with open(template_path, 'r') as template_file:
+        template_str = template_file.read()
+    html_node = mp.markdown_to_htmlnode(src_str)
+    html_str = html_node.to_html()
+    title = mp.extract_title(src_str)
+    # Replace '{{ Title }}' and '{{ Content }}' placeholders in template_str
+    title_placeholder = '{{ Title }}'
+    content_placeholder = '{{ Content }}'
+    template_str = template_str.replace(title_placeholder, title)
+    template_str = template_str.replace(content_placeholder, html_str)
+    dst_dir = os.path.dirname(dst_path)
+    if not os.path.exists(dst_dir):
+        os.makedirs(dst_dir)
+    with open(dst_path, 'w') as dst_file:
+        dst_file.write(template_str)

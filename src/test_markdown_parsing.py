@@ -634,8 +634,46 @@ And that's all! <img src="https://i.imgur.com/fJRm4Vk.jpeg" alt="smiley"/>\
         self.assertEqual(html, correct)
 
 
-# print('test_mix(): html =')
-# print(html)
+class TestExtractTitle(unittest.TestCase):
+    def test_single_block(self):
+        markdown = '# Hello World'
+        extracted = mp.extract_title(markdown)
+        correct = 'Hello World'
+        self.assertEqual(extracted, correct)
+        markdown = '# Hello World  '
+        extracted = mp.extract_title(markdown)
+        correct = 'Hello World'
+        self.assertEqual(extracted, correct)
+
+    def test_multiple_blocks(self):
+        markdown = '# Hello World\n\n## Section 1'
+        extracted = mp.extract_title(markdown)
+        correct = 'Hello World'
+        self.assertEqual(extracted, correct)
+        markdown = '# Hello World\n\n# Title 2'
+        extracted = mp.extract_title(markdown)
+        correct = 'Hello World'
+        self.assertEqual(extracted, correct)
+        markdown = 'Opening paragraph\n\n# Hello World\n\n## Section 1'
+        extracted = mp.extract_title(markdown)
+        correct = 'Hello World'
+        self.assertEqual(extracted, correct)
+
+    def test_no_title(self):
+        markdown = 'Hello World\n\n## Section 1'
+        try:
+            extracted = mp.extract_title(markdown)
+        except ValueError:
+            extracted = 'default'
+        correct = 'default'
+        self.assertEqual(extracted, correct)
+        markdown = ''
+        try:
+            extracted = mp.extract_title(markdown)
+        except ValueError:
+            extracted = 'default'
+        correct = 'default'
+        self.assertEqual(extracted, correct)
 
 
 if __name__ == '__main__':

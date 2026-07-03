@@ -337,3 +337,16 @@ def markdown_to_htmlnode(markdown: str) -> ParentNode:
         parent_node = block_to_parent_node(block)
         parents.append(parent_node)
     return ParentNode('div', parents)
+
+
+def extract_title(markdown: str) -> str:
+    """
+    Finds an h1/# header in a Markdown file's contents and returns the header
+    value. If no h1 header exists, raises an exception.
+    """
+    blocks = markdown_to_blocks(markdown)
+    for block in blocks:
+        if is_heading(block):
+            if get_heading_number(block) == 1:
+                return block[2:].strip()
+    raise ValueError('extract_title(): no h1 heading found in Markdown string')
