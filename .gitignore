@@ -1,2 +1,4 @@
 __pycache__/
 .ropeproject/
+public/
+make_dummy_public.sh
