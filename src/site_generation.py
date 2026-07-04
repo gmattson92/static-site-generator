@@ -1,5 +1,6 @@
 import os
 import shutil
+import glob
 import markdown_parsing as mp
 
 
@@ -135,3 +136,40 @@ def generate_page(src_path, template_path, dst_path):
         os.makedirs(dst_dir)
     with open(dst_path, 'w') as dst_file:
         dst_file.write(template_str)
+
+
+def get_destination_path(md_path, src_dir_root, dst_dir_root):
+    print('Entering get_destination_path()')
+    md_dir = os.path.dirname(md_path)
+    print(f'\tmd_dir = {md_dir}')
+    md_dir = md_dir.replace(src_dir_root, dst_dir_root)
+    print(f'\tmd_dir = {md_dir}')
+    md_fname = os.path.basename(md_path)
+    dst_fname = md_fname.replace('.md', '.html')
+    dst_path = os.path.join(md_dir, dst_fname)
+    return dst_path
+
+
+def mk_dst(html_path, verbose=False):
+    html_dir = os.path.dirname(html_path)
+    if os.path.exists(html_dir) and os.path.isdir(html_dir):
+        return
+    else:
+        if verbose:
+            print(f'Creating directory {html_dir} for output {html_path}')
+        os.makedirs(html_dir)
+
+
+def generate_pages_recursive(src_dir_path, template_path, dst_dir_root):
+    """
+    Generates the full website HTML and directory structure by generating HTML
+    from source *.md files in src_dir_path and its subdirectories. Uses the
+    template given by template_path. Generates HTML files under a mirrored
+    directory structure with root dst_dir_root.
+    """
+    glob_str = os.path.join(src_dir_path, r'**/*.md')
+    md_source_paths = glob.glob(glob_str, recursive=True)
+    for md_source in md_source_paths:
+        dst_path = get_destination_path(md_source, src_dir_path, dst_dir_root)
+        mk_dst(dst_path, True)
+        generate_page(md_source, template_path, dst_path)
