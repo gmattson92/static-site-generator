@@ -111,7 +111,17 @@ def copy_alt(source_dir, target_dir):
         shutil.copytree(source_dir, target_dir)
 
 
-def generate_page(src_path, template_path, dst_path):
+def change_basepath(html_str, new_basepath):
+    old_link_str = 'href="/'
+    new_link_str = f'href="{new_basepath}'
+    old_img_str = 'src="/'
+    new_img_str = f'src="{new_basepath}'
+    links_replaced = html_str.replace(old_link_str, new_link_str)
+    both_replaced = links_replaced.replace(old_img_str, new_img_str)
+    return both_replaced
+
+
+def generate_page(src_path, template_path, dst_path, basepath):
     print(f'Generating page from {src_path} to {dst_path} '
           f'using {template_path}')
     if not os.path.exists(src_path) or not os.path.isfile(src_path):
@@ -131,22 +141,21 @@ def generate_page(src_path, template_path, dst_path):
     content_placeholder = '{{ Content }}'
     template_str = template_str.replace(title_placeholder, title)
     template_str = template_str.replace(content_placeholder, html_str)
+    # Replace default "/" with basepath
+    final_html_str = change_basepath(template_str, basepath)
     dst_dir = os.path.dirname(dst_path)
     if not os.path.exists(dst_dir):
         os.makedirs(dst_dir)
     with open(dst_path, 'w') as dst_file:
-        dst_file.write(template_str)
+        dst_file.write(final_html_str)
 
 
 def get_destination_path(md_path, src_dir_root, dst_dir_root):
-    print('Entering get_destination_path()')
     md_dir = os.path.dirname(md_path)
-    print(f'\tmd_dir = {md_dir}')
-    md_dir = md_dir.replace(src_dir_root, dst_dir_root)
-    print(f'\tmd_dir = {md_dir}')
+    dst_dir = md_dir.replace(src_dir_root, dst_dir_root)
     md_fname = os.path.basename(md_path)
     dst_fname = md_fname.replace('.md', '.html')
-    dst_path = os.path.join(md_dir, dst_fname)
+    dst_path = os.path.join(dst_dir, dst_fname)
     return dst_path
 
 
@@ -160,16 +169,18 @@ def mk_dst(html_path, verbose=False):
         os.makedirs(html_dir)
 
 
-def generate_pages_recursive(src_dir_path, template_path, dst_dir_root):
+def generate_pages_recursive(
+    src_dir_path, template_path, dst_dir_root, basepath='/'
+):
     """
     Generates the full website HTML and directory structure by generating HTML
     from source *.md files in src_dir_path and its subdirectories. Uses the
     template given by template_path. Generates HTML files under a mirrored
-    directory structure with root dst_dir_root.
+    directory structure with root basepath/dst_dir_root.
     """
     glob_str = os.path.join(src_dir_path, r'**/*.md')
     md_source_paths = glob.glob(glob_str, recursive=True)
     for md_source in md_source_paths:
         dst_path = get_destination_path(md_source, src_dir_path, dst_dir_root)
         mk_dst(dst_path, True)
-        generate_page(md_source, template_path, dst_path)
+        generate_page(md_source, template_path, dst_path, basepath)
